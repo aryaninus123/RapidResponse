@@ -1,0 +1,71 @@
+{
+  "expo": {
+    "name": "RapidResponse",
+    "slug": "rapidresponse-emergency",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ef4444"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rapidresponse.emergency",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs location access to accurately report emergency locations.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs location access to accurately report emergency locations.",
+        "NSMicrophoneUsageDescription": "This app needs microphone access to record voice emergency reports.",
+        "NSCameraUsageDescription": "This app needs camera access to capture emergency situations."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.rapidresponse.emergency",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "RECORD_AUDIO",
+        "CAMERA",
+        "WAKE_LOCK"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow RapidResponse to use your location for emergency reporting."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow RapidResponse to access your microphone for voice emergency reports."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#ef4444"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "rapidresponse-emergency-app"
+      }
+    }
+  }
+} 
