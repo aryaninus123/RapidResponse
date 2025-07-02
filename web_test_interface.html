@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RapidResponse Enhanced Features Tester</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            padding: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.2em;
+        }
+
+        .test-section {
+            margin-bottom: 40px;
+            padding: 25px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            background: #f9f9f9;
+        }
+
+        .test-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .test-section h2 span {
+            font-size: 1.5em;
+            margin-right: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .location-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f0f8ff;
+            border-radius: 8px;
+            border-left: 5px solid #667eea;
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .results h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .result-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: white;
+            border-radius: 5px;
+            border-left: 3px solid #667eea;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .error {
+            background: #ffe6e6 !important;
+            border-left-color: #ff4444 !important;
+            color: #cc0000;
+        }
+
+        .success {
+            background: #e6ffe6 !important;
+            border-left-color: #44ff44 !important;
+            color: #006600;
+        }
+
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .preset-btn {
+            padding: 10px 15px;
+            background: #f0f0f0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .preset-btn:hover {
+            background: #e6f3ff;
+            border-color: #667eea;
+        }
+
+        .api-status {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .api-status.online {
+            background: #e6ffe6;
+            color: #006600;
+        }
+
+        .api-status.offline {
+            background: #ffe6e6;
+            color: #cc0000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 RapidResponse Enhanced Features Tester</h1>
+        <p class="subtitle">Test the new Routing Engine 🎯 and Location Intelligence 📍</p>
+        
+        <div id="apiStatus" class="api-status offline">
+            ⚠️ Checking API connection...
+        </div>
+
+        <!-- Fire Emergency Test -->
+        <div class="test-section">
+            <h2><span>🔥</span> Fire Emergency Test</h2>
+            
+            <div class="preset-buttons">
+                <div class="preset-btn" onclick="loadFirePreset('building')">🏢 Building Fire</div>
+                <div class="preset-btn" onclick="loadFirePreset('wildfire')">🌲 Wildfire</div>
+                <div class="preset-btn" onclick="loadFirePreset('vehicle')">🚗 Vehicle Fire</div>
+                <div class="preset-btn" onclick="loadFirePreset('gas')">⚠️ Gas Leak</div>
+            </div>
+
+            <div class="form-group">
+                <label for="fireText">Emergency Description:</label>
+                <textarea id="fireText" placeholder="Describe the fire emergency...">There is a large building fire with smoke coming out of the windows. People might be trapped inside!</textarea>
+            </div>
+
+            <div class="location-row">
+                <div class="form-group">
+                    <label for="fireLat">Latitude:</label>
+                    <input type="number" id="fireLat" value="40.7589" step="any">
+                </div>
+                <div class="form-group">
+                    <label for="fireLon">Longitude:</label>
+                    <input type="number" id="fireLon" value="-73.9851" step="any">
+                </div>
+            </div>
+
+            <button onclick="testFireEmergency()">🔥 Test Fire Emergency</button>
+            
+            <div id="fireResults" class="results"></div>
+        </div>
+
+        <!-- Medical Emergency Test -->
+        <div class="test-section">
+            <h2><span>🏥</span> Medical Emergency Test</h2>
+            
+            <div class="preset-buttons">
+                <div class="preset-btn" onclick="loadMedicalPreset('cardiac')">💔 Heart Attack</div>
+                <div class="preset-btn" onclick="loadMedicalPreset('stroke')">🧠 Stroke</div>
+                <div class="preset-btn" onclick="loadMedicalPreset('trauma')">🚑 Trauma</div>
+                <div class="preset-btn" onclick="loadMedicalPreset('overdose')">💊 Overdose</div>
+            </div>
+
+            <div class="form-group">
+                <label for="medicalText">Emergency Description:</label>
+                <textarea id="medicalText" placeholder="Describe the medical emergency...">My father is having severe chest pain and trouble breathing. He says his left arm is numb. Please help!</textarea>
+            </div>
+
+            <div class="location-row">
+                <div class="form-group">
+                    <label for="medicalLat">Latitude:</label>
+                    <input type="number" id="medicalLat" value="40.7505" step="any">
+                </div>
+                <div class="form-group">
+                    <label for="medicalLon">Longitude:</label>
+                    <input type="number" id="medicalLon" value="-73.9934" step="any">
+                </div>
+            </div>
+
+            <button onclick="testMedicalEmergency()">🚑 Test Medical Emergency</button>
+            
+            <div id="medicalResults" class="results"></div>
+        </div>
+
+        <!-- Complex Emergency Test -->
+        <div class="test-section">
+            <h2><span>💥</span> Complex Emergency Test</h2>
+            
+            <div class="preset-buttons">
+                <div class="preset-btn" onclick="loadComplexPreset('explosion')">💥 Chemical Plant Explosion</div>
+                <div class="preset-btn" onclick="loadComplexPreset('accident')">🚗 Multi-Car Accident</div>
+                <div class="preset-btn" onclick="loadComplexPreset('earthquake')">🌍 Earthquake</div>
+            </div>
+
+            <div class="form-group">
+                <label for="complexText">Emergency Description:</label>
+                <textarea id="complexText" placeholder="Describe the complex emergency...">There has been an explosion at a chemical plant! There is a massive fire spreading and multiple people are injured. We need immediate help with fire suppression and medical assistance!</textarea>
+            </div>
+
+            <div class="location-row">
+                <div class="form-group">
+                    <label for="complexLat">Latitude:</label>
+                    <input type="number" id="complexLat" value="40.6892" step="any">
+                </div>
+                <div class="form-group">
+                    <label for="complexLon">Longitude:</label>
+                    <input type="number" id="complexLon" value="-74.0445" step="any">
+                </div>
+            </div>
+
+            <button onclick="testComplexEmergency()">💥 Test Complex Emergency</button>
+            
+            <div id="complexResults" class="results"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+
+        // Check API status
+        async function checkApiStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/emergency/stats`);
+                if (response.ok) {
+                    document.getElementById('apiStatus').innerHTML = '✅ API is online and ready!';
+                    document.getElementById('apiStatus').className = 'api-status online';
+                } else {
+                    throw new Error('API not responding');
+                }
+            } catch (error) {
+                document.getElementById('apiStatus').innerHTML = '❌ API is offline. Start the server: python main.py';
+                document.getElementById('apiStatus').className = 'api-status offline';
+            }
+        }
+
+        // Load presets
+        function loadFirePreset(type) {
+            const presets = {
+                building: "There is a large building fire with smoke coming out of the windows. People might be trapped inside!",
+                wildfire: "A wildfire is spreading rapidly through the forest area. Strong winds are making it worse and it's approaching residential areas.",
+                vehicle: "There's a car on fire on the highway. The driver appears to be unconscious inside the vehicle.",
+                gas: "There's a strong smell of gas and we heard a hissing sound from the pipeline. There might be a gas leak!"
+            };
+            document.getElementById('fireText').value = presets[type] || presets.building;
+        }
+
+        function loadMedicalPreset(type) {
+            const presets = {
+                cardiac: "My father is having severe chest pain and trouble breathing. He says his left arm is numb. Please help!",
+                stroke: "My mother suddenly can't speak properly and her face is drooping on one side. She seems confused.",
+                trauma: "There's been a car accident. The driver is bleeding heavily and appears to have broken bones.",
+                overdose: "My friend took too many pills and is now unconscious. I can barely feel his pulse."
+            };
+            document.getElementById('medicalText').value = presets[type] || presets.cardiac;
+        }
+
+        function loadComplexPreset(type) {
+            const presets = {
+                explosion: "There has been an explosion at a chemical plant! There is a massive fire spreading and multiple people are injured. We need immediate help with fire suppression and medical assistance!",
+                accident: "Multi-car accident on the highway with several vehicles on fire and multiple casualties. Traffic is completely blocked.",
+                earthquake: "Major earthquake hit the area! Buildings are collapsing, there are fires breaking out, and many people are trapped in the rubble."
+            };
+            document.getElementById('complexText').value = presets[type] || presets.explosion;
+        }
+
+        // Test functions
+        async function testEmergency(type, text, lat, lon, resultsId) {
+            const resultsDiv = document.getElementById(resultsId);
+            resultsDiv.className = 'results show';
+            resultsDiv.innerHTML = '<div class="loading">🔄 Processing emergency through enhanced coordinator...</div>';
+
+            try {
+                const formData = new FormData();
+                formData.append('text', text);
+                formData.append('lat', lat);
+                formData.append('lon', lon);
+
+                const response = await fetch(`${API_BASE}/emergency/report`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    displayResults(result, resultsDiv, type);
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                }
+            } catch (error) {
+                resultsDiv.className = 'results show error';
+                resultsDiv.innerHTML = `<h3>❌ Error</h3><div class="result-item">${error.message}</div>`;
+            }
+        }
+
+        function testFireEmergency() {
+            const text = document.getElementById('fireText').value;
+            const lat = document.getElementById('fireLat').value;
+            const lon = document.getElementById('fireLon').value;
+            testEmergency('fire', text, lat, lon, 'fireResults');
+        }
+
+        function testMedicalEmergency() {
+            const text = document.getElementById('medicalText').value;
+            const lat = document.getElementById('medicalLat').value;
+            const lon = document.getElementById('medicalLon').value;
+            testEmergency('medical', text, lat, lon, 'medicalResults');
+        }
+
+        function testComplexEmergency() {
+            const text = document.getElementById('complexText').value;
+            const lat = document.getElementById('complexLat').value;
+            const lon = document.getElementById('complexLon').value;
+            testEmergency('complex', text, lat, lon, 'complexResults');
+        }
+
+        function displayResults(result, resultsDiv, type) {
+            resultsDiv.className = 'results show success';
+            
+            let html = '<h3>✅ Emergency Processed Successfully</h3>';
+            
+            html += `<div class="result-item"><strong>Type:</strong> ${result.emergency_type}</div>`;
+            html += `<div class="result-item"><strong>Priority:</strong> ${result.priority_level}</div>`;
+            
+            const details = result.response_plan?.details;
+            if (details) {
+                if (details.handler_used) {
+                    html += `<div class="result-item"><strong>🎯 Handler Used:</strong> ${details.handler_used}</div>`;
+                }
+                
+                if (details.agent_confidence) {
+                    html += `<div class="result-item"><strong>🤖 Agent Confidence:</strong> ${(details.agent_confidence * 100).toFixed(1)}%</div>`;
+                }
+
+                // Agent-specific response data
+                const agentResponse = details.agent_response;
+                if (agentResponse) {
+                    if (agentResponse.fire_type) {
+                        html += `<div class="result-item"><strong>🔥 Fire Type:</strong> ${agentResponse.fire_type}</div>`;
+                        html += `<div class="result-item"><strong>🚒 Units Dispatched:</strong> ${agentResponse.units_dispatched}</div>`;
+                        html += `<div class="result-item"><strong>🧯 Equipment:</strong> ${agentResponse.equipment_deployed?.join(', ')}</div>`;
+                    }
+                    
+                    if (agentResponse.medical_condition) {
+                        html += `<div class="result-item"><strong>🏥 Medical Condition:</strong> ${agentResponse.medical_condition}</div>`;
+                        html += `<div class="result-item"><strong>⏱️ Time Critical:</strong> ${agentResponse.time_critical ? 'Yes' : 'No'}</div>`;
+                        
+                        const hospital = agentResponse.hospital_destination;
+                        if (hospital) {
+                            html += `<div class="result-item"><strong>🏨 Recommended Hospital:</strong> ${hospital.hospital_name} (${hospital.distance} km)</div>`;
+                        }
+                    }
+                }
+
+                // Location intelligence
+                const locationIntel = details.location_intelligence;
+                if (locationIntel && locationIntel.facilities) {
+                    const facilities = locationIntel.facilities;
+                    const facilityCount = Object.keys(facilities).map(key => 
+                        `${facilities[key].length} ${key}`
+                    ).join(', ');
+                    html += `<div class="result-item"><strong>📍 Facilities Found:</strong> ${facilityCount}</div>`;
+                }
+
+                // Enhanced recommendations
+                const enhancedRecs = details.enhanced_recommendations;
+                if (enhancedRecs && Object.keys(enhancedRecs).length > 0) {
+                    html += `<div class="result-item"><strong>🎯 Enhanced Recommendations:</strong> ${Object.keys(enhancedRecs).length} recommendations generated</div>`;
+                }
+            }
+
+            resultsDiv.innerHTML = html;
+        }
+
+        // Initialize
+        checkApiStatus();
+        setInterval(checkApiStatus, 30000); // Check every 30 seconds
+    </script>
+</body>
+</html> 

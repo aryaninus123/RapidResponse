@@ -34,6 +34,7 @@ class Emergency(Base):
     location_lat = Column(Float)
     location_lon = Column(Float)
     response_plan = Column(JSON)
+    context_data = Column(JSON)  # Store weather, traffic, and other context data
     estimated_response_time = Column(DateTime)
     actual_response_time = Column(DateTime)
     notes = Column(String)

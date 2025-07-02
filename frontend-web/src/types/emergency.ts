@@ -21,6 +21,7 @@ export interface Emergency {
   estimated_response_time?: string;
   actual_response_time?: string;
   notes?: string;
+  context_data?: ContextData;
   created_at: string;
   updated_at: string;
 }
@@ -95,9 +96,10 @@ export interface ContextData {
 
 // WebSocket message types
 export interface WebSocketMessage {
-  type: 'emergency_update' | 'new_emergency' | 'status_change' | 'service_update';
-  data: any;
+  type: 'emergency_update' | 'service_status' | 'alert' | 'system_status' | 'new_emergency' | 'service_update' | 'emergency_stats' | 'heartbeat' | 'echo';
+  data: unknown;
   timestamp: string;
+  client_id?: string;
 }
 
 // Audio recording types

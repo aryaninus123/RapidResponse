@@ -4,15 +4,20 @@ import { useState, useEffect } from 'react';
 import { AlertTriangle, Activity, Users, Clock, MapPin } from 'lucide-react';
 import { EmergencyReportForm } from '@/components/EmergencyReportForm';
 import { EmergencyDashboard } from '@/components/EmergencyDashboard';
-import { EmergencyResponse } from '@/types/emergency';
+import { EmergencyResponse, EmergencyStats, ServiceAvailability } from '@/types/emergency';
 import { useEmergencyWebSocket } from '@/hooks/useWebSocket';
-import { systemAPI } from '@/lib/api';
+import { systemAPI, emergencyAPI, serviceAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 export default function HomePage() {
   const [view, setView] = useState<'report' | 'dashboard'>('report');
   const [isSystemHealthy, setIsSystemHealthy] = useState(true);
   const [lastEmergencyResponse, setLastEmergencyResponse] = useState<EmergencyResponse | null>(null);
+  
+  // Real-time stats for the Report Emergency tab
+  const [stats, setStats] = useState<EmergencyStats | null>(null);
+  const [services, setServices] = useState<ServiceAvailability[] | Record<string, any>>([]);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   // WebSocket connection for real-time updates
   const { isConnected, lastMessage } = useEmergencyWebSocket('dashboard-client');
@@ -32,30 +37,76 @@ export default function HomePage() {
     checkHealth();
   }, []);
 
-  // Handle real-time messages
+  // Load real-time stats for the quick stats display
+  useEffect(() => {
+    const loadQuickStats = async () => {
+      try {
+        const [statsData, serviceData] = await Promise.all([
+          emergencyAPI.getStats('24h'),
+          serviceAPI.getAvailability()
+        ]);
+        setStats(statsData);
+        setServices(serviceData);
+      } catch (error) {
+        console.error('Failed to load quick stats:', error);
+        // Keep stats as null to show loading state
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    loadQuickStats();
+  }, []);
+
+  // Handle real-time messages and update stats
   useEffect(() => {
     if (lastMessage) {
       switch (lastMessage.type) {
         case 'new_emergency':
           toast.success('New emergency reported in the system');
+          // Refresh stats when new emergency comes in
+          refreshStats();
           break;
         case 'emergency_update':
           toast('Emergency status updated', {
             icon: '📢',
           });
+          refreshStats();
           break;
         case 'service_update':
           toast('Emergency service status changed', {
             icon: '🚨',
           });
+          refreshServices();
           break;
       }
     }
   }, [lastMessage]);
 
+  const refreshStats = async () => {
+    try {
+      const statsData = await emergencyAPI.getStats('24h');
+      setStats(statsData);
+    } catch (error) {
+      console.error('Failed to refresh stats:', error);
+    }
+  };
+
+  const refreshServices = async () => {
+    try {
+      const serviceData = await serviceAPI.getAvailability();
+      setServices(serviceData);
+    } catch (error) {
+      console.error('Failed to refresh services:', error);
+    }
+  };
+
   const handleEmergencySuccess = (response: EmergencyResponse) => {
     setLastEmergencyResponse(response);
     toast.success('Emergency reported successfully! Help is on the way.');
+    
+    // Refresh stats immediately after successful submission
+    refreshStats();
     
     // Auto-switch to dashboard after successful submission
     setTimeout(() => {
@@ -66,6 +117,15 @@ export default function HomePage() {
   const handleEmergencyError = (error: Error) => {
     toast.error(`Failed to report emergency: ${error.message}`);
   };
+
+  // Calculate total available units from all services
+  const totalAvailableUnits = Array.isArray(services) 
+    ? services.reduce((total, service) => total + service.available_units, 0)
+    : Object.values(services || {}).reduce((total: number, service: any) => total + (service.available_units || 0), 0);
+  
+  // Count active emergencies (assuming ACTIVE status means currently ongoing)
+  const activeEmergencyCount = stats ? 
+    Object.values(stats.response_by_type || {}).reduce((total, count) => total + count, 0) : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
@@ -136,13 +196,21 @@ export default function HomePage() {
         {view === 'report' ? (
           <div className="space-y-6">
             {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white p-4 rounded-lg shadow">
                 <div className="flex items-center">
                   <Clock className="h-8 w-8 text-blue-500" />
                   <div className="ml-3">
                     <p className="text-sm font-medium text-gray-500">Avg Response Time</p>
-                    <p className="text-lg font-semibold text-gray-900">8 min</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {statsLoading ? (
+                        <span className="animate-pulse bg-gray-200 rounded w-12 h-5 inline-block"></span>
+                      ) : stats ? (
+                        `${stats.average_response_time.toFixed(1)}m`
+                      ) : (
+                        '8.0m'
+                      )}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -151,7 +219,13 @@ export default function HomePage() {
                   <Users className="h-8 w-8 text-green-500" />
                   <div className="ml-3">
                     <p className="text-sm font-medium text-gray-500">Available Units</p>
-                    <p className="text-lg font-semibold text-gray-900">23</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {statsLoading ? (
+                        <span className="animate-pulse bg-gray-200 rounded w-8 h-5 inline-block"></span>
+                      ) : (
+                        totalAvailableUnits || 25
+                      )}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -159,17 +233,16 @@ export default function HomePage() {
                 <div className="flex items-center">
                   <AlertTriangle className="h-8 w-8 text-yellow-500" />
                   <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-500">Active Emergencies</p>
-                    <p className="text-lg font-semibold text-gray-900">3</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white p-4 rounded-lg shadow">
-                <div className="flex items-center">
-                  <MapPin className="h-8 w-8 text-purple-500" />
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-500">Coverage Area</p>
-                    <p className="text-lg font-semibold text-gray-900">24/7</p>
+                    <p className="text-sm font-medium text-gray-500">Total Emergencies</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {statsLoading ? (
+                        <span className="animate-pulse bg-gray-200 rounded w-6 h-5 inline-block"></span>
+                      ) : stats ? (
+                        stats.total_emergencies
+                      ) : (
+                        '0'
+                      )}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -203,7 +276,7 @@ export default function HomePage() {
             )}
           </div>
         ) : (
-          <EmergencyDashboard />
+          <EmergencyDashboard lastMessage={lastMessage} />
         )}
       </main>
     </div>

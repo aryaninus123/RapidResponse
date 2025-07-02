@@ -78,7 +78,6 @@ export function EmergencyReportScreen({ navigation }: EmergencyReportScreenProps
     try {
       const currentLocation = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Highest,
-        maximumAge: 10000,
       });
 
       setLocation({
@@ -195,7 +194,7 @@ export function EmergencyReportScreen({ navigation }: EmergencyReportScreenProps
       
       {/* Emergency Header */}
       <View style={styles.header}>
-        <MaterialIcons name="emergency" size={32} color="#ef4444" />
+        <MaterialIcons name="warning" size={32} color="#ef4444" />
         <Text style={styles.headerTitle}>Report Emergency</Text>
         <Text style={styles.headerSubtitle}>
           Provide details about the emergency situation

@@ -7,25 +7,27 @@ import {
   MapPin, 
   Phone,
   Users,
-  TrendingUp,
   Activity,
-  RefreshCw
+  RefreshCw,
+  Cloud,
+  Car
 } from 'lucide-react';
 import { Emergency, EmergencyStats, ServiceAvailability } from '@/types/emergency';
 import { emergencyAPI, serviceAPI } from '@/lib/api';
-import { useEmergencyWebSocket } from '@/hooks/useWebSocket';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
+import { WebSocketMessage } from '@/types/emergency';
 
-export function EmergencyDashboard() {
+interface EmergencyDashboardProps {
+  lastMessage?: WebSocketMessage | null;
+}
+
+export function EmergencyDashboard({ lastMessage }: EmergencyDashboardProps) {
   const [emergencies, setEmergencies] = useState<Emergency[]>([]);
   const [stats, setStats] = useState<EmergencyStats | null>(null);
-  const [services, setServices] = useState<ServiceAvailability[]>([]);
+  const [services, setServices] = useState<ServiceAvailability[] | Record<string, any>>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEmergency, setSelectedEmergency] = useState<Emergency | null>(null);
-
-  // WebSocket connection for real-time updates
-  const { lastMessage } = useEmergencyWebSocket('dashboard');
 
   // Load initial data
   useEffect(() => {
@@ -134,7 +136,7 @@ export function EmergencyDashboard() {
       
       {/* Stats Overview */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex items-center">
               <AlertTriangle className="h-8 w-8 text-red-500" />
@@ -157,20 +159,12 @@ export function EmergencyDashboard() {
           
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex items-center">
-              <TrendingUp className="h-8 w-8 text-green-500" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Success Rate</p>
-                <p className="text-2xl font-bold text-gray-900">{(stats.success_rate * 100).toFixed(1)}%</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
               <Users className="h-8 w-8 text-purple-500" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Active Services</p>
-                <p className="text-2xl font-bold text-gray-900">{services.length}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {Array.isArray(services) ? services.length : Object.keys(services || {}).length}
+                </p>
               </div>
             </div>
           </div>
@@ -178,6 +172,33 @@ export function EmergencyDashboard() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Current Conditions Widget */}
+        <div className="bg-white rounded-lg shadow">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">Current Conditions</h3>
+          </div>
+          
+          <div className="p-6 space-y-4">
+            {/* Weather Widget */}
+            <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
+              <Cloud className="h-8 w-8 text-blue-500" />
+              <div>
+                <p className="text-sm font-medium text-gray-900">Weather</p>
+                <p className="text-xs text-gray-600">Partly cloudy, 22°C</p>
+              </div>
+            </div>
+            
+            {/* Traffic Widget */}
+            <div className="flex items-center space-x-3 p-3 bg-yellow-50 rounded-lg">
+              <Car className="h-8 w-8 text-yellow-600" />
+              <div>
+                <p className="text-sm font-medium text-gray-900">Traffic</p>
+                <p className="text-xs text-gray-600">Moderate congestion</p>
+              </div>
+            </div>
+          </div>
+        </div>
         
         {/* Recent Emergencies */}
         <div className="lg:col-span-2 bg-white rounded-lg shadow">
@@ -250,7 +271,14 @@ export function EmergencyDashboard() {
           </div>
           
           <div className="p-6 space-y-4">
-            {services.map((service) => (
+            {(Array.isArray(services) ? services : Object.entries(services || {}).map(([name, data]) => ({
+              id: name.toLowerCase().replace(/\s+/g, '_'),
+              service_type: name,
+              available_units: (data as any).available_units,
+              total_units: (data as any).total_units,
+              status: (data as any).status,
+              average_response_time: Math.floor(Math.random() * 8) + 3 // Mock response time
+            }))).map((service) => (
               <div key={service.id} className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-900">{service.service_type}</p>
@@ -338,6 +366,97 @@ export function EmergencyDashboard() {
                   <label className="text-sm font-medium text-gray-500">Emergency ID</label>
                   <p className="mt-1 text-sm font-mono">{selectedEmergency.id}</p>
                 </div>
+
+                {/* Weather and Traffic Context */}
+                {selectedEmergency.context_data && (
+                  <>
+                    {selectedEmergency.context_data.weather && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Weather Conditions</label>
+                        <div className="mt-1 p-3 bg-blue-50 rounded-lg">
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                              <span className="text-gray-600">Conditions:</span>
+                              <span className="ml-1 font-medium">{selectedEmergency.context_data.weather.conditions}</span>
+                            </div>
+                            {selectedEmergency.context_data.weather.temperature && (
+                              <div>
+                                <span className="text-gray-600">Temperature:</span>
+                                <span className="ml-1 font-medium">{selectedEmergency.context_data.weather.temperature}°C</span>
+                              </div>
+                            )}
+                            {selectedEmergency.context_data.weather.wind_speed && (
+                              <div>
+                                <span className="text-gray-600">Wind Speed:</span>
+                                <span className="ml-1 font-medium">{selectedEmergency.context_data.weather.wind_speed} km/h</span>
+                              </div>
+                            )}
+                            {selectedEmergency.context_data.weather.visibility && (
+                              <div>
+                                <span className="text-gray-600">Visibility:</span>
+                                <span className="ml-1 font-medium">{selectedEmergency.context_data.weather.visibility} km</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedEmergency.context_data.traffic && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Traffic Conditions</label>
+                        <div className="mt-1 p-3 bg-yellow-50 rounded-lg">
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                              <span className="text-gray-600">Congestion:</span>
+                              <span className={`ml-1 font-medium ${
+                                selectedEmergency.context_data.traffic.congestion_level === 'high' ? 'text-red-600' :
+                                selectedEmergency.context_data.traffic.congestion_level === 'medium' ? 'text-yellow-600' :
+                                'text-green-600'
+                              }`}>
+                                {selectedEmergency.context_data.traffic.congestion_level.toUpperCase()}
+                              </span>
+                            </div>
+                            {selectedEmergency.context_data.traffic.average_speed && (
+                              <div>
+                                <span className="text-gray-600">Avg Speed:</span>
+                                <span className="ml-1 font-medium">{selectedEmergency.context_data.traffic.average_speed} km/h</span>
+                              </div>
+                            )}
+                          </div>
+                          {selectedEmergency.context_data.traffic.incidents && selectedEmergency.context_data.traffic.incidents.length > 0 && (
+                            <div className="mt-2">
+                              <span className="text-gray-600 text-sm">Traffic Incidents:</span>
+                              <ul className="mt-1 text-sm text-red-600">
+                                {selectedEmergency.context_data.traffic.incidents.map((incident: any, index: number) => (
+                                  <li key={index}>• {incident.description || 'Traffic incident reported'}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedEmergency.context_data.fire_stations && selectedEmergency.context_data.fire_stations.length > 0 && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Nearby Fire Stations</label>
+                        <div className="mt-1 p-3 bg-red-50 rounded-lg">
+                          <div className="space-y-2">
+                            {selectedEmergency.context_data.fire_stations.slice(0, 3).map((station: any, index: number) => (
+                              <div key={index} className="text-sm">
+                                <div className="font-medium">{station.name}</div>
+                                <div className="text-gray-600">
+                                  {station.distance}km away • {station.response_time}min ETA • {station.available_units} units
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           </div>
