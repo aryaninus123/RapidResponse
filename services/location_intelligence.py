@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 import asyncio
 import logging
@@ -74,7 +74,7 @@ class LocationIntelligence:
             # Execute all facility searches in parallel
             facility_results = await asyncio.gather(*facility_tasks, return_exceptions=True)
             
-            # Process results
+            # Process results and convert to dictionaries for JSON serialization
             emergency_facilities = {}
             for i, result in enumerate(facility_results):
                 facility_type = required_facilities[i]
@@ -82,7 +82,11 @@ class LocationIntelligence:
                     logger.error(f"Failed to get {facility_type}: {result}")
                     emergency_facilities[facility_type] = []
                 else:
-                    emergency_facilities[facility_type] = result
+                    # Convert EmergencyFacility objects to dictionaries
+                    emergency_facilities[facility_type] = [
+                        asdict(facility) if hasattr(facility, '__dict__') else facility
+                        for facility in result
+                    ]
             
             # Enhance with additional context
             context = await self._build_emergency_context(

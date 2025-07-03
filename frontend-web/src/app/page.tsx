@@ -1,16 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AlertTriangle, Activity, Users, Clock, MapPin } from 'lucide-react';
+import { AlertTriangle, Activity, Users, Clock, MapPin, Radio } from 'lucide-react';
 import { EmergencyReportForm } from '@/components/EmergencyReportForm';
 import { EmergencyDashboard } from '@/components/EmergencyDashboard';
+import { CommunicationsCenter } from '@/components/CommunicationsCenter';
 import { EmergencyResponse, EmergencyStats, ServiceAvailability } from '@/types/emergency';
 import { useEmergencyWebSocket } from '@/hooks/useWebSocket';
 import { systemAPI, emergencyAPI, serviceAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 export default function HomePage() {
-  const [view, setView] = useState<'report' | 'dashboard'>('report');
+  const [view, setView] = useState<'report' | 'dashboard' | 'communications'>('report');
   const [isSystemHealthy, setIsSystemHealthy] = useState(true);
   const [lastEmergencyResponse, setLastEmergencyResponse] = useState<EmergencyResponse | null>(null);
   
@@ -128,9 +129,9 @@ export default function HomePage() {
     Object.values(stats.response_by_type || {}).reduce((total, count) => total + count, 0) : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-white shadow-lg border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
@@ -162,15 +163,15 @@ export default function HomePage() {
       </header>
 
       {/* Navigation */}
-      <nav className="bg-white border-b">
+      <nav className="bg-white border-b border-gray-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-8">
             <button
               onClick={() => setView('report')}
               className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                 view === 'report'
-                  ? 'border-emergency-500 text-emergency-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-red-500 text-red-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-red-300'
               }`}
             >
               <AlertTriangle className="inline mr-2" size={16} />
@@ -180,29 +181,42 @@ export default function HomePage() {
               onClick={() => setView('dashboard')}
               className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                 view === 'dashboard'
-                  ? 'border-emergency-500 text-emergency-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-blue-300'
               }`}
             >
               <Activity className="inline mr-2" size={16} />
               Emergency Dashboard
+            </button>
+            <button
+              onClick={() => setView('communications')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                view === 'communications'
+                  ? 'border-purple-500 text-purple-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-purple-300'
+              }`}
+            >
+              <Radio className="inline mr-2" size={16} />
+              Communications Center
             </button>
           </div>
         </div>
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <main className={view === 'report' ? 'py-6 px-6 sm:px-8 lg:px-12' : 'max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8'}>
         {view === 'report' ? (
-          <div className="space-y-6">
+          <div className="space-y-8">
             {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white p-4 rounded-lg shadow">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl shadow-lg border border-blue-200">
                 <div className="flex items-center">
-                  <Clock className="h-8 w-8 text-blue-500" />
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-500">Avg Response Time</p>
-                    <p className="text-lg font-semibold text-gray-900">
+                  <div className="bg-blue-500 p-2 rounded-lg">
+                    <Clock className="h-8 w-8 text-white" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-base font-medium text-blue-700">Avg Response Time</p>
+                    <p className="text-2xl font-semibold text-gray-900">
                       {statsLoading ? (
                         <span className="animate-pulse bg-gray-200 rounded w-12 h-5 inline-block"></span>
                       ) : stats ? (
@@ -214,12 +228,14 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-              <div className="bg-white p-4 rounded-lg shadow">
+              <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 rounded-xl shadow-lg border border-emerald-200">
                 <div className="flex items-center">
-                  <Users className="h-8 w-8 text-green-500" />
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-500">Available Units</p>
-                    <p className="text-lg font-semibold text-gray-900">
+                  <div className="bg-emerald-500 p-2 rounded-lg">
+                    <Users className="h-8 w-8 text-white" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-base font-medium text-emerald-700">Available Units</p>
+                    <p className="text-2xl font-semibold text-gray-900">
                       {statsLoading ? (
                         <span className="animate-pulse bg-gray-200 rounded w-8 h-5 inline-block"></span>
                       ) : (
@@ -229,12 +245,14 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-              <div className="bg-white p-4 rounded-lg shadow">
+              <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-xl shadow-lg border border-orange-200">
                 <div className="flex items-center">
-                  <AlertTriangle className="h-8 w-8 text-yellow-500" />
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-500">Total Emergencies</p>
-                    <p className="text-lg font-semibold text-gray-900">
+                  <div className="bg-orange-500 p-2 rounded-lg">
+                    <AlertTriangle className="h-8 w-8 text-white" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-base font-medium text-orange-700">Total Emergencies</p>
+                    <p className="text-2xl font-semibold text-gray-900">
                       {statsLoading ? (
                         <span className="animate-pulse bg-gray-200 rounded w-6 h-5 inline-block"></span>
                       ) : stats ? (
@@ -275,8 +293,10 @@ export default function HomePage() {
               </div>
             )}
           </div>
-        ) : (
+        ) : view === 'dashboard' ? (
           <EmergencyDashboard lastMessage={lastMessage} />
+        ) : (
+          <CommunicationsCenter />
         )}
       </main>
     </div>

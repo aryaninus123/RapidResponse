@@ -10,10 +10,14 @@ import {
   Activity,
   RefreshCw,
   Cloud,
-  Car
+  Car,
+  CheckCircle,
+  X
 } from 'lucide-react';
 import { Emergency, EmergencyStats, ServiceAvailability } from '@/types/emergency';
 import { emergencyAPI, serviceAPI } from '@/lib/api';
+import { EmergencyMap } from './EmergencyMap';
+import { EmergencyAnalytics } from './EmergencyAnalytics';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { WebSocketMessage } from '@/types/emergency';
@@ -26,6 +30,7 @@ export function EmergencyDashboard({ lastMessage }: EmergencyDashboardProps) {
   const [emergencies, setEmergencies] = useState<Emergency[]>([]);
   const [stats, setStats] = useState<EmergencyStats | null>(null);
   const [services, setServices] = useState<ServiceAvailability[] | Record<string, any>>([]);
+  const [conditions, setConditions] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedEmergency, setSelectedEmergency] = useState<Emergency | null>(null);
 
@@ -57,7 +62,8 @@ export function EmergencyDashboard({ lastMessage }: EmergencyDashboardProps) {
       await Promise.all([
         loadEmergencies(),
         loadStats(),
-        loadServices()
+        loadServices(),
+        loadConditions()
       ]);
     } catch (error) {
       toast.error('Failed to load dashboard data');
@@ -90,6 +96,47 @@ export function EmergencyDashboard({ lastMessage }: EmergencyDashboardProps) {
       setServices(data);
     } catch (error) {
       console.error('Failed to load services:', error);
+    }
+  };
+
+  const loadConditions = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/conditions/current');
+      if (response.ok) {
+        const data = await response.json();
+        setConditions(data);
+      }
+    } catch (error) {
+      console.error('Failed to load conditions:', error);
+    }
+  };
+
+  const closeEmergency = async (emergencyId: string, notes?: string) => {
+    try {
+      const notesParam = encodeURIComponent(notes || 'Emergency resolved by dashboard action');
+      const response = await fetch(`http://localhost:8000/emergency/${emergencyId}/close?notes=${notesParam}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to close emergency');
+      }
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success('Emergency closed successfully');
+        
+        // Refresh all dashboard data
+        await Promise.all([
+          loadEmergencies(),
+          loadStats(),
+          loadServices()
+        ]);
+      } else {
+        throw new Error(result.message || 'Failed to close emergency');
+      }
+    } catch (error) {
+      console.error('Failed to close emergency:', error);
+      toast.error('Failed to close emergency');
     }
   };
 
@@ -136,7 +183,7 @@ export function EmergencyDashboard({ lastMessage }: EmergencyDashboardProps) {
       
       {/* Stats Overview */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex items-center">
               <AlertTriangle className="h-8 w-8 text-red-500" />
@@ -149,10 +196,34 @@ export function EmergencyDashboard({ lastMessage }: EmergencyDashboardProps) {
           
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex items-center">
+              <Activity className="h-8 w-8 text-orange-500" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Active Emergencies</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {emergencies.filter(e => e.status === 'ACTIVE').length}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow">
+            <div className="flex items-center">
               <Clock className="h-8 w-8 text-blue-500" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Avg Response Time</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.average_response_time.toFixed(1)}m</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow">
+            <div className="flex items-center">
+              <CheckCircle className="h-8 w-8 text-green-500" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Resolved Today</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {emergencies.filter(e => e.status === 'RESOLVED').length}
+                </p>
               </div>
             </div>
           </div>
@@ -176,37 +247,10 @@ export function EmergencyDashboard({ lastMessage }: EmergencyDashboardProps) {
         {/* Current Conditions Widget */}
         <div className="bg-white rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Current Conditions</h3>
-          </div>
-          
-          <div className="p-6 space-y-4">
-            {/* Weather Widget */}
-            <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
-              <Cloud className="h-8 w-8 text-blue-500" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">Weather</p>
-                <p className="text-xs text-gray-600">Partly cloudy, 22°C</p>
-              </div>
-            </div>
-            
-            {/* Traffic Widget */}
-            <div className="flex items-center space-x-3 p-3 bg-yellow-50 rounded-lg">
-              <Car className="h-8 w-8 text-yellow-600" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">Traffic</p>
-                <p className="text-xs text-gray-600">Moderate congestion</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Recent Emergencies */}
-        <div className="lg:col-span-2 bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium text-gray-900">Recent Emergencies</h3>
+              <h3 className="text-lg font-medium text-gray-900">Current Conditions</h3>
               <button
-                onClick={loadEmergencies}
+                onClick={loadConditions}
                 className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
               >
                 <RefreshCw size={16} className="mr-1" />
@@ -215,15 +259,104 @@ export function EmergencyDashboard({ lastMessage }: EmergencyDashboardProps) {
             </div>
           </div>
           
+          <div className="p-6 space-y-4">
+            {/* Weather Widget */}
+            <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
+              <Cloud className="h-8 w-8 text-blue-500" />
+              <div>
+                <p className="text-sm font-medium text-gray-900">Weather</p>
+                <p className="text-xs text-gray-600">
+                  {conditions?.weather ? 
+                    `${conditions.weather.conditions}, ${conditions.weather.temperature}°C` :
+                    'Loading weather...'
+                  }
+                </p>
+                {conditions?.weather?.wind_speed && (
+                  <p className="text-xs text-gray-500">Wind: {conditions.weather.wind_speed} km/h</p>
+                )}
+              </div>
+            </div>
+            
+            {/* Traffic Widget */}
+            <div className="flex items-center space-x-3 p-3 bg-yellow-50 rounded-lg">
+              <Car className="h-8 w-8 text-yellow-600" />
+              <div>
+                <p className="text-sm font-medium text-gray-900">Traffic</p>
+                <p className="text-xs text-gray-600">
+                  {conditions?.traffic ? 
+                    `${conditions.traffic.congestion_level.charAt(0).toUpperCase() + conditions.traffic.congestion_level.slice(1)} congestion` :
+                    'Loading traffic...'
+                  }
+                </p>
+                {conditions?.traffic?.average_speed && (
+                  <p className="text-xs text-gray-500">Avg speed: {conditions.traffic.average_speed} km/h</p>
+                )}
+              </div>
+            </div>
+            
+            {/* Last Updated */}
+            {conditions?.last_updated && (
+              <div className="pt-2 border-t border-gray-100">
+                <p className="text-xs text-gray-500 text-center">
+                  Updated: {new Date(conditions.last_updated).toLocaleTimeString()}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Recent Emergencies */}
+        <div className="lg:col-span-2 bg-white rounded-lg shadow">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium text-gray-900">Recent Emergencies</h3>
+              <div className="flex items-center space-x-2">
+                {emergencies.filter(e => e.status === 'ACTIVE').length > 0 && (
+                  <button
+                    onClick={() => {
+                      const activeEmergencies = emergencies.filter(e => e.status === 'ACTIVE');
+                      if (window.confirm(`Are you sure you want to close all ${activeEmergencies.length} active emergencies?`)) {
+                        Promise.all(activeEmergencies.map(e => closeEmergency(e.id, 'Bulk closure from dashboard')));
+                      }
+                    }}
+                    className="text-sm text-green-600 hover:text-green-800 flex items-center"
+                  >
+                    <CheckCircle size={16} className="mr-1" />
+                    Close All Active
+                  </button>
+                )}
+                <button
+                  onClick={loadEmergencies}
+                  className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+                >
+                  <RefreshCw size={16} className="mr-1" />
+                  Refresh
+                </button>
+              </div>
+            </div>
+          </div>
+          
           <div className="divide-y divide-gray-200">
-            {emergencies.slice(0, 10).map((emergency) => (
+            {emergencies
+              .sort((a, b) => {
+                // First sort by status: ACTIVE emergencies first
+                if (a.status === 'ACTIVE' && b.status !== 'ACTIVE') return -1;
+                if (a.status !== 'ACTIVE' && b.status === 'ACTIVE') return 1;
+                
+                // Then sort by creation time (newest first)
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+              })
+              .slice(0, 10)
+              .map((emergency) => (
               <div
                 key={emergency.id}
-                className="p-6 hover:bg-gray-50 cursor-pointer transition-colors"
-                onClick={() => setSelectedEmergency(emergency)}
+                className="p-6 hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
+                  <div 
+                    className="flex items-center space-x-3 flex-1 cursor-pointer"
+                    onClick={() => setSelectedEmergency(emergency)}
+                  >
                     <span className="text-2xl">{getEmergencyIcon(emergency.emergency_type)}</span>
                     <div>
                       <div className="flex items-center space-x-2">
@@ -249,8 +382,35 @@ export function EmergencyDashboard({ lastMessage }: EmergencyDashboardProps) {
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm text-gray-500">ID: {emergency.id.slice(0, 8)}</p>
+                  
+                  <div className="flex items-center space-x-2">
+                    <div className="text-right">
+                      <p className="text-sm text-gray-500">ID: {emergency.id.slice(0, 8)}</p>
+                    </div>
+                    
+                    {/* Close Emergency Button */}
+                    {emergency.status === 'ACTIVE' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm('Are you sure you want to close this emergency?')) {
+                            closeEmergency(emergency.id);
+                          }
+                        }}
+                        className="ml-2 px-3 py-1 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1"
+                        title="Close Emergency"
+                      >
+                        <CheckCircle size={14} />
+                        <span>Close</span>
+                      </button>
+                    )}
+                    
+                    {emergency.status === 'RESOLVED' && (
+                      <div className="ml-2 px-3 py-1 bg-gray-100 text-gray-500 text-xs rounded-lg flex items-center space-x-1">
+                        <CheckCircle size={14} />
+                        <span>Closed</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -301,6 +461,16 @@ export function EmergencyDashboard({ lastMessage }: EmergencyDashboardProps) {
             )}
           </div>
         </div>
+        
+        {/* Emergency Map */}
+        <div className="lg:col-span-3">
+          <EmergencyMap emergencies={emergencies} />
+        </div>
+      </div>
+
+      {/* Emergency Analytics */}
+      <div className="mt-6">
+        <EmergencyAnalytics emergencies={emergencies} />
       </div>
 
       {/* Emergency Details Modal */}
@@ -310,12 +480,28 @@ export function EmergencyDashboard({ lastMessage }: EmergencyDashboardProps) {
             <div className="px-6 py-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-medium text-gray-900">Emergency Details</h3>
-                <button
-                  onClick={() => setSelectedEmergency(null)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  ✕
-                </button>
+                <div className="flex items-center space-x-2">
+                  {selectedEmergency.status === 'ACTIVE' && (
+                    <button
+                      onClick={() => {
+                        if (window.confirm('Are you sure you want to close this emergency?')) {
+                          closeEmergency(selectedEmergency.id);
+                          setSelectedEmergency(null);
+                        }
+                      }}
+                      className="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1"
+                    >
+                      <CheckCircle size={16} />
+                      <span>Close Emergency</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setSelectedEmergency(null)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             </div>
             
@@ -331,6 +517,47 @@ export function EmergencyDashboard({ lastMessage }: EmergencyDashboardProps) {
                     </span>
                   </div>
                 </div>
+
+                {/* Emergency Description/Content */}
+                {selectedEmergency.notes && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Emergency Description</label>
+                    <div className="mt-1 p-3 bg-gray-50 rounded-lg border">
+                      <p className="text-sm text-gray-900 whitespace-pre-wrap">{selectedEmergency.notes}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Audio File - if available */}
+                {selectedEmergency.context_data?.audio && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Emergency Audio</label>
+                    <div className="mt-1 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="text-sm text-blue-700">🎵 Audio recording from emergency report</span>
+                      </div>
+                      <audio 
+                        controls 
+                        className="w-full"
+                        src={selectedEmergency.context_data.audio}
+                      >
+                        Your browser does not support the audio element.
+                      </audio>
+                    </div>
+                  </div>
+                )}
+
+                {/* Fallback for emergencies without description */}
+                {!selectedEmergency.notes && !selectedEmergency.context_data?.audio && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Emergency Content</label>
+                    <div className="mt-1 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <p className="text-sm text-yellow-700">
+                        📝 No description or audio available for this emergency
+                      </p>
+                    </div>
+                  </div>
+                )}
                 
                 <div>
                   <label className="text-sm font-medium text-gray-500">Status</label>
@@ -355,12 +582,7 @@ export function EmergencyDashboard({ lastMessage }: EmergencyDashboardProps) {
                   </div>
                 )}
                 
-                {selectedEmergency.notes && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Notes</label>
-                    <p className="mt-1 text-sm">{selectedEmergency.notes}</p>
-                  </div>
-                )}
+
                 
                 <div>
                   <label className="text-sm font-medium text-gray-500">Emergency ID</label>
@@ -464,4 +686,4 @@ export function EmergencyDashboard({ lastMessage }: EmergencyDashboardProps) {
       )}
     </div>
   );
-} 
+}

@@ -92,6 +92,7 @@ export interface ContextData {
   hospitals?: Hospital[];
   fire_stations?: any[];
   police_stations?: any[];
+  audio?: string; // URL or base64 data for emergency audio
 }
 
 // WebSocket message types

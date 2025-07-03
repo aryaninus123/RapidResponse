@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { MapPin, Crosshair } from 'lucide-react';
 import { Location } from '@/types/emergency';
+import { GoogleMapsPicker } from './GoogleMapsPicker';
 
 interface LocationPickerProps {
   initialLocation?: Location | null;
@@ -17,14 +18,7 @@ export function LocationPicker({
 }: LocationPickerProps) {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(initialLocation || null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [showMap, setShowMap] = useState(false);
-  const mapRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (initialLocation) {
-      setSelectedLocation(initialLocation);
-    }
-  }, [initialLocation]);
+  const [showMap, setShowMap] = useState(true); // Default to showing map
 
   const getCurrentLocation = useCallback(() => {
     if (!('geolocation' in navigator)) {
@@ -89,24 +83,10 @@ export function LocationPicker({
     }
   }, [onLocationSelect]);
 
-  // Simple map placeholder - in a real app you'd integrate with Mapbox or Google Maps
-  const MapPlaceholder = () => (
-    <div className="w-full h-64 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
-      <div className="text-center text-gray-500">
-        <MapPin size={48} className="mx-auto mb-2" />
-        <p className="text-sm">Interactive Map</p>
-        <p className="text-xs">Click to select emergency location</p>
-        {selectedLocation && (
-          <div className="mt-2 p-2 bg-white rounded border">
-            <p className="text-xs font-medium">Selected Location:</p>
-            <p className="text-xs">
-              {selectedLocation.lat.toFixed(6)}, {selectedLocation.lon.toFixed(6)}
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  const handleLocationSelect = useCallback((location: Location) => {
+    setSelectedLocation(location);
+    onLocationSelect(location);
+  }, [onLocationSelect]);
 
   return (
     <div className={`location-picker ${className}`}>
@@ -158,14 +138,13 @@ export function LocationPicker({
           </div>
         )}
 
-        {/* Map Display */}
+        {/* Interactive Google Maps */}
         {showMap && (
-          <div ref={mapRef}>
-            <MapPlaceholder />
-            <p className="mt-2 text-xs text-gray-500 text-center">
-              Note: In production, this would show an interactive map (Mapbox, Google Maps, etc.)
-            </p>
-          </div>
+          <GoogleMapsPicker
+            initialLocation={selectedLocation}
+            onLocationSelect={handleLocationSelect}
+            className="w-full"
+          />
         )}
 
         {/* Location Info */}

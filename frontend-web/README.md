@@ -40,17 +40,31 @@ npm install
 ```
 
 2. **Environment Configuration**
-```bash
-cp .env.example .env.local
-```
-
-Edit `.env.local`:
+Create a `.env.local` file:
 ```env
+# Emergency Response API
 NEXT_PUBLIC_API_BASE=http://localhost:8000
 NEXT_PUBLIC_WS_URL=ws://localhost:8000
+
+# Google Maps API (required for interactive maps)
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
 ```
 
-3. **Start Development Server**
+3. **Google Maps API Setup**
+To enable interactive maps with location search:
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the following APIs:
+   - **Maps JavaScript API**
+   - **Places API** 
+   - **Geocoding API**
+4. Create an API key in "Credentials"
+5. Add the API key to your `.env.local` file
+
+**Note**: Without the API key, the app will show a fallback location picker with manual coordinate entry.
+
+4. **Start Development Server**
 ```bash
 npm run dev
 ```
@@ -121,9 +135,11 @@ npm run lint
 - **Playback** to review before submission
 
 ### Location Services
-- **GPS Integration** - Automatic location detection
-- **Manual Entry** - Coordinate input for precise locations
-- **Map Integration** - Visual location picker (production ready for Mapbox/Google Maps)
+- **GPS Integration** - Automatic location detection with browser geolocation
+- **Interactive Maps** - Google Maps with click-to-select functionality
+- **Places Search** - Google Places API for address/landmark search
+- **Manual Entry** - Coordinate input fallback for precise locations
+- **Custom Markers** - Visual indicators for selected emergency locations
 
 ### Real-time Updates
 - **WebSocket Connection** - Live emergency status updates
@@ -194,9 +210,12 @@ npm start
 
 ### Environment Variables
 ```env
+# Emergency Response API
 NEXT_PUBLIC_API_BASE=https://your-api-domain.com
 NEXT_PUBLIC_WS_URL=wss://your-api-domain.com
-NEXT_PUBLIC_MAPBOX_TOKEN=your_mapbox_token
+
+# Google Maps API
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
 ```
 
 ### Deployment Platforms

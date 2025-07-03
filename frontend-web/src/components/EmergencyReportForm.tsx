@@ -141,10 +141,10 @@ export function EmergencyReportForm({
   ];
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg">
+    <div className="p-8 bg-white rounded-xl shadow-xl border border-gray-100">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center">
-          <AlertTriangle className="mr-2 text-emergency-500" />
+          <AlertTriangle className="mr-2 text-red-500" />
           Report Emergency
         </h2>
         <p className="text-gray-600">
@@ -155,13 +155,13 @@ export function EmergencyReportForm({
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         
         {/* Input Method Selection */}
-        <div className="flex space-x-2 p-1 bg-gray-100 rounded-lg">
+        <div className="flex space-x-2 p-1 bg-gradient-to-r from-gray-100 to-gray-50 rounded-xl border border-gray-200">
           <button
             type="button"
             onClick={() => setInputMethod('text')}
-            className={`flex-1 py-2 px-4 rounded-md transition-colors ${
+            className={`flex-1 py-2 px-4 rounded-lg transition-colors ${
               inputMethod === 'text'
-                ? 'bg-white text-gray-900 shadow-sm'
+                ? 'bg-blue-500 text-white shadow-md'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
@@ -171,9 +171,9 @@ export function EmergencyReportForm({
           <button
             type="button"
             onClick={() => setInputMethod('audio')}
-            className={`flex-1 py-2 px-4 rounded-md transition-colors ${
+            className={`flex-1 py-2 px-4 rounded-lg transition-colors ${
               inputMethod === 'audio'
-                ? 'bg-white text-gray-900 shadow-sm'
+                ? 'bg-green-500 text-white shadow-md'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
@@ -192,7 +192,7 @@ export function EmergencyReportForm({
               {...register('text')}
               id="text"
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emergency-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="Describe the emergency situation in detail..."
             />
             {errors.text && (
@@ -222,10 +222,10 @@ export function EmergencyReportForm({
                 key={type.value}
                 type="button"
                 onClick={() => setValue('emergency_type', type.value)}
-                className={`p-3 rounded-lg border-2 transition-all text-left ${
+                className={`p-3 rounded-xl border-2 transition-all text-left ${
                   selectedType === type.value
-                    ? 'border-emergency-500 bg-emergency-50'
-                    : 'border-gray-200 hover:border-gray-300'
+                    ? 'border-red-400 bg-red-50 shadow-md'
+                    : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                 }`}
               >
                 <div className="flex items-center space-x-2">
@@ -259,10 +259,10 @@ export function EmergencyReportForm({
           <button
             type="submit"
             disabled={isSubmitting || (!textInput && !audioRecording)}
-            className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+            className={`px-6 py-3 rounded-xl font-medium transition-all shadow-lg ${
               isSubmitting || (!textInput && !audioRecording)
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-emergency-500 text-white hover:bg-emergency-600'
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-sm'
+                : 'bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 transform hover:scale-105'
             }`}
           >
             {isSubmitting ? (

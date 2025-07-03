@@ -1,6 +1,7 @@
 import './globals.css';
 import { Inter } from 'next/font/google';
 import { Toaster } from 'react-hot-toast';
+import { GoogleMapsProvider } from '@/components/GoogleMapsProvider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -18,9 +19,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body className={`${inter.className} h-full antialiased`}>
-        <div className="min-h-full bg-gray-50">
-          {children}
-        </div>
+        <GoogleMapsProvider>
+          <div className="min-h-full bg-gray-50">
+            {children}
+          </div>
+        </GoogleMapsProvider>
         <Toaster
           position="top-right"
           toastOptions={{
