@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, JSON, ForeignKey, Enum, func
+from sqlalchemy import Column, Integer, String, Float, DateTime, JSON, ForeignKey, Enum, func, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -23,6 +23,11 @@ class ServiceStatus(str, enum.Enum):
     ACTIVE = "active"
     LIMITED = "limited"
     INACTIVE = "inactive"
+
+class UserRole(str, enum.Enum):
+    PUBLIC = "public"
+    DISPATCHER = "dispatcher"
+    ADMIN = "admin"
 
 class Emergency(Base):
     __tablename__ = "emergencies"
@@ -83,6 +88,37 @@ class Notification(Base):
 
     # Relationships
     emergency = relationship("Emergency", back_populates="notifications")
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    username = Column(String, unique=True, nullable=False, index=True)
+    email = Column(String, unique=True, nullable=False, index=True)
+    hashed_password = Column(String, nullable=False)
+    full_name = Column(String, nullable=False)
+    badge_number = Column(String, unique=True, nullable=True)
+    role = Column(Enum(UserRole), default=UserRole.PUBLIC)
+    is_active = Column(Boolean, default=True)
+    last_login = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    sessions = relationship("UserSession", back_populates="user")
+
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    token = Column(String, unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_used = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", back_populates="sessions")
 
 class NotificationSubscription(Base):
     __tablename__ = "notification_subscriptions"

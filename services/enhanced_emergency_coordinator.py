@@ -24,7 +24,7 @@ class EnhancedEmergencyCoordinator:
         # Initialize core services
         self.translation_service = TranslationService()
         self.emergency_classifier = EmergencyClassifier()
-        self.speech_service = SpeechService()
+        self.speech_service = SpeechService(test_mode=False)
         
         # Initialize enhanced services
         apify_token = os.getenv("APIFY_API_TOKEN", "")

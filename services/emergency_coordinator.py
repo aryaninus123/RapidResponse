@@ -16,7 +16,7 @@ class EmergencyCoordinator:
         """Initialize the emergency coordinator with required services"""
         self.translation_service = TranslationService()
         self.emergency_classifier = EmergencyClassifier()
-        self.speech_service = SpeechService()
+        self.speech_service = SpeechService(test_mode=False)
         self.data_collector = ApifyDataCollector(api_token=os.getenv("APIFY_API_TOKEN", ""))
 
     async def process_emergency(

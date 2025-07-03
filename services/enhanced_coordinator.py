@@ -24,7 +24,7 @@ class EnhancedEmergencyCoordinator:
         # Initialize core services
         self.translation_service = TranslationService()
         self.emergency_classifier = EmergencyClassifier()
-        self.speech_service = SpeechService()
+        self.speech_service = SpeechService(test_mode=False)
         
         # Initialize enhanced services
         apify_token = os.getenv("APIFY_API_TOKEN", "")
@@ -113,7 +113,7 @@ class EnhancedEmergencyCoordinator:
             
             # Step 9: Build final response
             final_response = self._build_final_response(
-                enhanced_response, location_context, start_time, classification
+                enhanced_response, location_context, start_time, classification, final_text
             )
             
             logger.info(f"Enhanced emergency processed in {final_response['processing_time']:.2f}s")
@@ -312,7 +312,8 @@ class EnhancedEmergencyCoordinator:
         enhanced_response: Dict[str, Any], 
         location_context: Dict[str, Any], 
         start_time: datetime,
-        original_classification: Dict[str, Any] = None
+        original_classification: Dict[str, Any] = None,
+        processed_text: str = ""
     ) -> Dict[str, Any]:
         """Build the final comprehensive response"""
         mcp_response = enhanced_response["mcp_response"]
@@ -320,6 +321,7 @@ class EnhancedEmergencyCoordinator:
         return {
             "type": original_classification.get("type", "UNKNOWN") if original_classification else "UNKNOWN",
             "priority": original_classification.get("priority", "MEDIUM") if original_classification else "MEDIUM",
+            "processed_text": processed_text,  # Include the transcribed/processed text
             "details": {
                 "handler_used": mcp_response["handler_id"],
                 "agent_confidence": mcp_response["confidence"],

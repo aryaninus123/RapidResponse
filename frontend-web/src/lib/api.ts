@@ -26,9 +26,13 @@ async function apiRequest<T>(
 ): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
   
+  // Get authentication token if available
+  const token = typeof window !== 'undefined' ? localStorage.getItem('rapidresponse_token') : null;
+  
   const config: RequestInit = {
     headers: {
       'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
       ...options.headers,
     } as Record<string, string>,
     ...options,

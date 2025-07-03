@@ -93,32 +93,32 @@ export function LocationPicker({
       <div className="space-y-4">
         
         {/* Location Actions */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2 overflow-x-auto">
           <button
             type="button"
             onClick={getCurrentLocation}
             disabled={isGettingLocation}
-            className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-blue-300 transition-colors"
+            className="flex items-center px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-blue-300 transition-colors whitespace-nowrap text-sm"
           >
-            <Crosshair size={16} className="mr-2" />
+            <Crosshair size={14} className="mr-2" />
             {isGettingLocation ? 'Getting Location...' : 'Use Current Location'}
           </button>
 
           <button
             type="button"
             onClick={handleManualLocationInput}
-            className="flex items-center px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+            className="flex items-center px-3 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors whitespace-nowrap text-sm"
           >
-            <MapPin size={16} className="mr-2" />
+            <MapPin size={14} className="mr-2" />
             Enter Coordinates
           </button>
 
           <button
             type="button"
             onClick={() => setShowMap(!showMap)}
-            className="flex items-center px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+            className="flex items-center px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors whitespace-nowrap text-sm"
           >
-            <MapPin size={16} className="mr-2" />
+            <MapPin size={14} className="mr-2" />
             {showMap ? 'Hide Map' : 'Show Map'}
           </button>
         </div>

@@ -21,6 +21,8 @@ load_dotenv()
 # Import our enhanced services
 from services.enhanced_coordinator import enhanced_emergency_coordinator
 from services.notification.notification_service import notification_manager
+from services.auth.auth_routes import router as auth_router
+from services.auth.dependencies import require_dispatcher, get_optional_user
 from database.connection import get_db, init_db
 from database.models import (
     Emergency,
@@ -28,7 +30,8 @@ from database.models import (
     ServiceStatus,
     ServiceAvailability,
     Notification,
-    NotificationSubscription
+    NotificationSubscription,
+    User
 )
 
 # Initialize FastAPI app
@@ -49,6 +52,9 @@ app.add_middleware(
 
 # Initialize database
 init_db()
+
+# Include authentication routes
+app.include_router(auth_router)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -93,7 +99,8 @@ connected_clients = {}
 async def get_emergency_history(
     limit: int = 20,
     offset: int = 0,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_dispatcher)
 ):
     """Get emergency history from database with optional pagination"""
     try:
@@ -124,7 +131,10 @@ async def get_emergency_history(
         return []
 
 @app.get("/emergency/stats")
-async def get_emergency_stats(db: Session = Depends(get_db)):
+async def get_emergency_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_dispatcher)
+):
     """Get emergency statistics"""
     try:
         total_emergencies = db.query(Emergency).count()
@@ -161,7 +171,7 @@ async def get_emergency_stats(db: Session = Depends(get_db)):
         }
 
 @app.get("/services/availability")
-async def get_service_availability():
+async def get_service_availability(current_user: User = Depends(require_dispatcher)):
     """Get service availability information"""
     # Mock service availability data
     return {
@@ -418,6 +428,9 @@ async def report_emergency(
             "agent_confidence": enhanced_details.get("agent_confidence", 0.0)
         }
         
+        # Use processed text from response (includes transcribed audio) or fallback to original text
+        emergency_description = response.get("processed_text", text)
+        
         emergency = Emergency(
             id=uuid.uuid4(),
             emergency_type=response["type"],
@@ -429,7 +442,7 @@ async def report_emergency(
             context_data=context_data,  # Save enhanced context data
             estimated_response_time=None,  # We'll calculate this later
             actual_response_time=None,
-            notes=text  # Store the original text description
+            notes=emergency_description  # Store the processed text (transcribed audio or original text)
         )
         db.add(emergency)
         db.commit()
