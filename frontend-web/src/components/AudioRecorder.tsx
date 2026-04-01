@@ -71,9 +71,9 @@ export function AudioRecorder({
       setDuration(0);
 
       // Start timer
-             timerRef.current = setInterval(() => {
-         setDuration((prev: number) => {
-           const newDuration = prev + 1;
+      timerRef.current = setInterval(() => {
+        setDuration((prev: number) => {
+          const newDuration = prev + 1;
           if (newDuration >= maxDuration) {
             stopRecording();
             return newDuration;

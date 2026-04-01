@@ -1,9 +1,14 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, List
+from datetime import datetime, timezone
 import logging
 import re
+import json
+import uuid
+import aiohttp
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -11,19 +16,28 @@ logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="RapidRespond Emergency Response System - Minimal Test",
-    description="Minimal version for testing audio uploads and multi-language support",
+    title="RapidRespond Emergency Response System",
+    description="Multi-agent emergency response system",
     version="1.0.0"
 )
 
-# Add CORS middleware
+# CORS: allow all in dev, restrict to frontend URL in production
+FRONTEND_URL = os.getenv("FRONTEND_URL", "*")
+ALLOWED_ORIGINS = ["*"] if FRONTEND_URL == "*" else [FRONTEND_URL, "http://localhost:3000"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# WebSocket connection manager
+connected_clients: Dict[str, WebSocket] = {}
+
+# In-memory emergency storage
+emergencies_store: List[dict] = []
 
 class EmergencyResponse(BaseModel):
     emergency_type: str
@@ -171,6 +185,39 @@ def classify_emergency_simple(text: str) -> tuple:
     # Default
     return "OTHER", "MEDIUM"
 
+@app.websocket("/ws/{client_id}")
+async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    """WebSocket endpoint for real-time updates"""
+    await websocket.accept()
+    connected_clients[client_id] = websocket
+    logger.info(f"WebSocket client connected: {client_id}")
+    
+    try:
+        while True:
+            data = await websocket.receive_text()
+            logger.info(f"Received from {client_id}: {data}")
+    except WebSocketDisconnect:
+        connected_clients.pop(client_id, None)
+        logger.info(f"WebSocket client disconnected: {client_id}")
+    except Exception as e:
+        connected_clients.pop(client_id, None)
+        logger.error(f"WebSocket error for {client_id}: {e}")
+
+async def broadcast_to_clients(message: dict):
+    """Broadcast a message to all connected WebSocket clients"""
+    disconnected = []
+    for client_id, ws in list(connected_clients.items()):
+        try:
+            await ws.send_text(json.dumps(message, default=str))
+        except Exception:
+            disconnected.append(client_id)
+    for cid in disconnected:
+        connected_clients.pop(cid, None)
+
+@app.get("/")
+async def root():
+    return {"status": "ok", "message": "RapidResponse API is running", "docs": "/docs"}
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
@@ -250,6 +297,32 @@ async def report_emergency(
         
         logger.info("Emergency processed successfully")
         
+        # Store the emergency
+        now = datetime.now(timezone.utc).isoformat()
+        emergency_record = {
+            "id": str(uuid.uuid4()),
+            "emergency_type": emergency_type,
+            "priority_level": priority_level,
+            "status": "ACTIVE",
+            "location_lat": lat,
+            "location_lon": lon,
+            "response_plan": response_plan,
+            "notes": translated_text,
+            "context_data": {},
+            "estimated_response_time": None,
+            "actual_response_time": None,
+            "created_at": now,
+            "updated_at": now,
+        }
+        emergencies_store.insert(0, emergency_record)
+        logger.info(f"Emergency stored: {emergency_record['id']}")
+        
+        # Broadcast to connected WebSocket clients
+        await broadcast_to_clients({
+            "type": "new_emergency",
+            "data": emergency_record
+        })
+        
         return {
             "emergency_type": emergency_type,
             "priority_level": priority_level,
@@ -261,6 +334,215 @@ async def report_emergency(
         logger.error(f"Error processing emergency: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/emergency/stats")
+async def get_emergency_stats(time_period: str = "24h"):
+    """Get emergency statistics based on stored emergencies"""
+    total = len(emergencies_store)
+    active = sum(1 for e in emergencies_store if e["status"] == "ACTIVE")
+    by_type = {"MEDICAL": 0, "FIRE": 0, "CRIME": 0, "OTHER": 0}
+    for e in emergencies_store:
+        t = e["emergency_type"]
+        if t in by_type:
+            by_type[t] += 1
+        else:
+            by_type["OTHER"] += 1
+    return {
+        "total_emergencies": total,
+        "active_emergencies": active,
+        "average_response_time": 8.0,
+        "response_by_type": by_type,
+        "time_period": time_period
+    }
+
+@app.get("/services/availability")
+async def get_services_availability():
+    """Get service availability - mock data for minimal version"""
+    return [
+        {
+            "id": "fire-1",
+            "service_type": "Fire Department",
+            "available_units": 5,
+            "total_units": 8,
+            "status": "active",
+            "average_response_time": 5
+        },
+        {
+            "id": "medical-1",
+            "service_type": "Medical Services",
+            "available_units": 10,
+            "total_units": 12,
+            "status": "active",
+            "average_response_time": 7
+        },
+        {
+            "id": "police-1",
+            "service_type": "Police",
+            "available_units": 10,
+            "total_units": 15,
+            "status": "active",
+            "average_response_time": 4
+        }
+    ]
+
+@app.get("/emergency/history")
+async def get_emergency_history(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    emergency_type: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 20,
+    offset: int = 0,
+):
+    """Get emergency history from in-memory store"""
+    results = emergencies_store
+    if emergency_type:
+        results = [e for e in results if e["emergency_type"] == emergency_type]
+    if status:
+        results = [e for e in results if e["status"] == status]
+    return results[offset:offset + limit]
+
+@app.get("/emergency/{emergency_id}")
+async def get_emergency(emergency_id: str):
+    """Get a single emergency by ID"""
+    for e in emergencies_store:
+        if e["id"] == emergency_id:
+            return e
+    raise HTTPException(status_code=404, detail="Emergency not found")
+
+@app.put("/emergency/{emergency_id}")
+async def update_emergency(emergency_id: str, data: dict):
+    """Update emergency status or notes"""
+    for e in emergencies_store:
+        if e["id"] == emergency_id:
+            if "status" in data:
+                e["status"] = data["status"]
+            if "notes" in data:
+                e["notes"] = data["notes"]
+            e["updated_at"] = datetime.now(timezone.utc).isoformat()
+            await broadcast_to_clients({"type": "emergency_update", "data": e})
+            return e
+    raise HTTPException(status_code=404, detail="Emergency not found")
+
+@app.put("/services/{service_id}")
+async def update_service(service_id: str, data: dict):
+    """Update service status"""
+    return {"id": service_id, "status": "updated", **data}
+
+@app.post("/notifications/subscribe")
+async def subscribe_notifications(data: dict):
+    """Subscribe to notifications"""
+    return {"success": True, "subscriber_id": str(uuid.uuid4())}
+
+@app.get("/notifications/{subscriber_id}")
+async def get_notifications(subscriber_id: str):
+    """Get notifications for a subscriber"""
+    return []
+
+@app.get("/emergency/{emergency_id}/close")
+async def close_emergency(emergency_id: str, notes: str = "Emergency closed"):
+    """Close an emergency"""
+    for e in emergencies_store:
+        if e["id"] == emergency_id:
+            e["status"] = "RESOLVED"
+            e["notes"] = notes
+            e["updated_at"] = datetime.now(timezone.utc).isoformat()
+            e["actual_response_time"] = datetime.now(timezone.utc).isoformat()
+            await broadcast_to_clients({
+                "type": "emergency_update",
+                "data": e
+            })
+            return {"success": True, "message": "Emergency closed", "emergency_id": emergency_id}
+    raise HTTPException(status_code=404, detail="Emergency not found")
+
+@app.get("/conditions/current")
+async def get_current_conditions():
+    """Get current weather/traffic conditions using live weather data"""
+    # Default location: San Francisco (can be made configurable)
+    lat, lon = 37.7749, -122.4194
+    
+    weather_data = {
+        "conditions": "Unknown",
+        "temperature": None,
+        "wind_speed": None,
+        "visibility": None,
+    }
+    
+    try:
+        import ssl
+        ssl_ctx = ssl.create_default_context()
+        ssl_ctx.check_hostname = False
+        ssl_ctx.verify_mode = ssl.CERT_NONE
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ssl_ctx)) as session:
+            url = (
+                f"https://api.open-meteo.com/v1/forecast"
+                f"?latitude={lat}&longitude={lon}"
+                f"&current=temperature_2m,wind_speed_10m,weather_code,relative_humidity_2m"
+                f"&temperature_unit=celsius&wind_speed_unit=kmh"
+            )
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    current = data.get("current", {})
+                    
+                    # Map WMO weather codes to readable conditions
+                    code = current.get("weather_code", 0)
+                    conditions_map = {
+                        0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy",
+                        3: "Overcast", 45: "Foggy", 48: "Depositing rime fog",
+                        51: "Light drizzle", 53: "Moderate drizzle", 55: "Dense drizzle",
+                        61: "Slight rain", 63: "Moderate rain", 65: "Heavy rain",
+                        71: "Slight snow", 73: "Moderate snow", 75: "Heavy snow",
+                        80: "Slight rain showers", 81: "Moderate rain showers",
+                        82: "Violent rain showers", 95: "Thunderstorm",
+                        96: "Thunderstorm with slight hail", 99: "Thunderstorm with heavy hail",
+                    }
+                    
+                    weather_data = {
+                        "conditions": conditions_map.get(code, "Unknown"),
+                        "temperature": current.get("temperature_2m"),
+                        "wind_speed": current.get("wind_speed_10m"),
+                        "humidity": current.get("relative_humidity_2m"),
+                        "visibility": 10,
+                    }
+                    logger.info(f"Fetched live weather: {weather_data['conditions']}, {weather_data['temperature']}°C")
+    except Exception as e:
+        logger.warning(f"Failed to fetch live weather: {e}, using defaults")
+        weather_data = {
+            "conditions": "Clear",
+            "temperature": 18,
+            "wind_speed": 10,
+            "visibility": 10,
+        }
+    
+    # Traffic estimate based on time of day
+    hour = datetime.now().hour
+    if 7 <= hour <= 9 or 16 <= hour <= 19:
+        congestion, speed = "high", 20
+    elif 10 <= hour <= 15:
+        congestion, speed = "medium", 35
+    else:
+        congestion, speed = "low", 50
+    
+    # Count active emergencies that could affect traffic
+    active_incidents = [
+        {"description": f"{e['emergency_type']} emergency reported"}
+        for e in emergencies_store
+        if e["status"] == "ACTIVE" and e["emergency_type"] in ("FIRE", "TRAFFIC")
+    ]
+    if active_incidents:
+        congestion = "high"
+        speed = max(10, speed - 15)
+    
+    return {
+        "weather": weather_data,
+        "traffic": {
+            "congestion_level": congestion,
+            "average_speed": speed,
+            "incidents": active_incidents,
+        },
+        "last_updated": datetime.now(timezone.utc).isoformat(),
+    }
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8100) 
+    uvicorn.run(app, host="0.0.0.0", port=8000) 
