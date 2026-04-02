@@ -9,6 +9,20 @@ import json
 import uuid
 import aiohttp
 import os
+import base64
+import tempfile
+
+# Load Google Cloud credentials from env var (for Render deployment)
+_google_creds_b64 = os.getenv("GOOGLE_CREDENTIALS_JSON")
+if _google_creds_b64:
+    try:
+        _creds_json = base64.b64decode(_google_creds_b64).decode()
+        _tmp = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
+        _tmp.write(_creds_json)
+        _tmp.close()
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = _tmp.name
+    except Exception as _e:
+        print(f"Warning: Failed to load GOOGLE_CREDENTIALS_JSON: {_e}")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -78,85 +92,23 @@ def detect_language_simple(text: str) -> str:
         return "en"
 
 def translate_to_english_mock(text: str, source_lang: str) -> str:
-    """Mock translation function for testing"""
-    
-    translations = {
-        "es": {
-            "¡Ayuda! Hay un incendio en el edificio y hay personas atrapadas!": 
-            "Help! There is a fire in the building and people are trapped!",
-            "¡Fuego! ¡La cocina está en llamas!":
-            "Fire! The kitchen is on fire!",
-            "Emergencia médica! Ataque al corazón!":
-            "Medical emergency! Heart attack!"
-        },
-        "fr": {
-            "Au secours! Il y a un incendie dans le bâtiment et des gens sont piégés!":
-            "Help! There is a fire in the building and people are trapped!",
-            "Incendie! La maison brûle!":
-            "Fire! The house is burning!"
-        },
-        "de": {
-            "Hilfe! Es gibt einen Brand im Gebäude und Menschen sind eingeschlossen!":
-            "Help! There is a fire in the building and people are trapped!",
-            "Notfall! Jemand ist zusammengebrochen!":
-            "Emergency! Someone has collapsed!"
-        },
-        "it": {
-            "Aiuto! C'è un incendio nell'edificio e ci sono persone intrappolate!":
-            "Help! There is a fire in the building and people are trapped!"
-        },
-        "ja": {
-            "助けて！建物で火事が発生し、人々が閉じ込められています！":
-            "Help! There is a fire in the building and people are trapped!"
-        },
-        "zh": {
-            "救命！大楼起火，有人被困！":
-            "Help! There is a fire in the building and people are trapped!"
-        }
-    }
-    
+    """Translate text to English using Google Cloud Translation API.
+    Falls back to returning the original text if credentials are unavailable."""
     if source_lang == "en":
         return text
-    
-    # Try exact match first
-    if source_lang in translations and text in translations[source_lang]:
-        return translations[source_lang][text]
-    
-    # Generic emergency translation with keyword mapping
-    emergency_translations = {
-        "es": {
-            "fuego": "fire", "incendio": "fire", "emergencia": "emergency", 
-            "médica": "medical", "ataque": "attack", "corazón": "heart",
-            "ayuda": "help"
-        },
-        "fr": {
-            "incendie": "fire", "secours": "help", "urgence": "emergency",
-            "maison": "house", "brûle": "burning"
-        },
-        "de": {
-            "notfall": "emergency", "brand": "fire", "hilfe": "help",
-            "zusammengebrochen": "collapsed", "jemand": "someone"
-        },
-        "it": {
-            "incendio": "fire", "aiuto": "help", "emergenza": "emergency"
-        },
-        "ja": {
-            "火事": "fire", "助けて": "help", "緊急": "emergency", "火災": "fire"
-        },
-        "zh": {
-            "起火": "fire", "救命": "help", "紧急": "emergency", "火灾": "fire"
-        }
-    }
-    
-    # Simple keyword-based translation
-    translated_text = text
-    if source_lang in emergency_translations:
-        for foreign_word, english_word in emergency_translations[source_lang].items():
-            if foreign_word in text.lower():
-                translated_text = f"Emergency: {english_word} situation - {text}"
-                break
-    
-    return translated_text
+
+    if not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+        logger.warning("Google Cloud credentials not configured, skipping translation")
+        return text
+
+    try:
+        from google.cloud import translate_v2 as translate
+        client = translate.Client()
+        result = client.translate(text, target_language="en", source_language=source_lang)
+        return result["translatedText"]
+    except Exception as e:
+        logger.warning(f"Translation failed: {e}, returning original text")
+        return text
 
 def classify_emergency_simple(text: str) -> tuple:
     """Simple emergency classification based on keywords"""
