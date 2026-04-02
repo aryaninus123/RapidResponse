@@ -77,65 +77,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {
-    try {
-      const response = await fetch('http://localhost:8000/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        toast.error(error.detail || 'Login failed');
-        return false;
-      }
-
-      const data = await response.json();
-      
-      // Store both user data and token
-      const userData = {
-        ...data.user,
-        name: data.user.full_name, // Map backend field to frontend field
-        badge: data.user.badge_number,
-      };
-      
-      setUser(userData);
-      localStorage.setItem('rapidresponse_user', JSON.stringify(userData));
-      localStorage.setItem('rapidresponse_token', data.access_token);
-      
-      toast.success(`Welcome back, ${userData.name}!`);
-      return true;
-    } catch (error) {
-      console.error('Login error:', error);
-      toast.error('Login failed. Please try again.');
+    const match = mockUsers[username];
+    if (!match || match.password !== password) {
+      toast.error('Invalid username or password');
       return false;
     }
+    setUser(match.user);
+    localStorage.setItem('rapidresponse_user', JSON.stringify(match.user));
+    localStorage.setItem('rapidresponse_token', `mock-token-${match.user.id}`);
+    toast.success(`Welcome back, ${match.user.name}!`);
+    return true;
   };
 
-  const logout = async () => {
-    try {
-      const token = localStorage.getItem('rapidresponse_token');
-      if (token) {
-        // Call backend logout endpoint
-        await fetch('http://localhost:8000/auth/logout', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-      }
-    } catch (error) {
-      // Continue with logout even if backend call fails
-      console.error('Logout error:', error);
-    } finally {
-      // Clean up local storage
-      setUser(null);
-      localStorage.removeItem('rapidresponse_user');
-      localStorage.removeItem('rapidresponse_token');
-      toast.success('Logged out successfully');
-    }
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('rapidresponse_user');
+    localStorage.removeItem('rapidresponse_token');
+    toast.success('Logged out successfully');
   };
 
   const hasRole = (role: UserRole): boolean => {
