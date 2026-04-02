@@ -2,10 +2,5 @@
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
-  "installCommand": "npm install",
-  "env": {
-    "NEXT_PUBLIC_API_URL": "@rapidresponse_api_url",
-    "NEXT_PUBLIC_WS_URL": "@rapidresponse_ws_url",
-    "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY": "@rapidresponse_maps_key"
-  }
+  "installCommand": "npm install"
 }
